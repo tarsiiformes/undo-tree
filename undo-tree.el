@@ -625,24 +625,37 @@
 ;;                       o     x  (undo the undo-in-region)
 ;;
 ;;
-;; In `undo-tree-mode', undo-in-region works similarly: when there's an active
-;; region, undoing only undoes changes that affect that region. However, the
-;; way these undos-in-region are recorded in the undo history is quite
-;; different. In `undo-tree-mode', undo-in-region creates a new branch in the
-;; undo history. The new branch consists of an undo step that undoes some of
-;; the changes that affect the current region, and another step that undoes
-;; the remaining changes needed to rejoin the previous undo history.
+;; In `undo-tree-mode', undo-in-region works much the same way: when there's
+;; an active region, undoing only undoes changes that affect that region. In
+;; `undo-tree-mode', redoing when there's an active region similarly only
+;; redoes changes that affect that region.
+;;
+;; However, the way these undo- and redo-in-region changes are recorded in the
+;; undo history is quite different. The good news is, you don't need to
+;; understand this to use undo- and redo-in-region in `undo-tree-mode' - just
+;; go ahead and use them! They'll probably work as you expect. But if you're
+;; masochistic enough to want to understand conceptually what's happening to
+;; the undo tree as you undo- and redo-in-region, then read on...
+;;
+;;
+;; Undo-in-region creates a new branch in the undo history. The new branch
+;; consists of an undo step that undoes some of the changes that affect the
+;; current region, and another step that undoes the remaining changes needed
+;; to rejoin the previous undo history.
 ;;
 ;;      Previous undo history                Undo-in-region
 ;;
 ;;               o                                o
 ;;               |                                |
 ;;               |                                |
+;;               |                                |
 ;;               o                                o
-;;               |                                |\
+;;               |                                |
+;;               |                                |
+;;               |                                |
+;;               o                                o_
 ;;               |                                | \
-;;               o                                o  x  (undo-in-region)
-;;               |                                |  |
+;;               |                                |  x  (undo-in-region)
 ;;               |                                |  |
 ;;               x                                o  o
 ;;
@@ -655,48 +668,57 @@
 ;;      First undo-in-region                 Second undo-in-region
 ;;
 ;;               o                                o
-;;               |                                |\
+;;               |                                |
+;;               |                                |
+;;               |                                |
+;;               o                                o_
 ;;               |                                | \
-;;               o                                o  x  (undo-in-region)
-;;               |\                               |  |
+;;               |                                |  x  (undo-in-region)
+;;               |                                |  |
+;;               o_                               o  |
 ;;               | \                              |  |
-;;               o  x                             o  o
-;;               |  |                             |  |
-;;               |  |                             |  |
-;;               o  o                             o  o
+;;		 |  x                             |  o
+;;		 |  |                             |  |
+;;		 o  o     			  o  o
 ;;
 ;; Redoing takes you back down the undo tree, as usual (as long as you haven't
 ;; changed the active region after undoing-in-region, it doesn't matter if it
 ;; is still active):
 ;;
 ;;                       o
-;;			 |\
+;;			 |
+;;			 |
+;;			 |
+;;			 o_
 ;;			 | \
-;;			 o  o
+;;			 |  o
 ;;			 |  |
+;;			 o  |
 ;;			 |  |
-;;			 o  o  (redo)
-;;			 |  |
+;;			 |  o  (redo)
 ;;			 |  |
 ;;			 o  x  (redo)
 ;;
 ;;
-;; What about redo-in-region? Obviously, this only makes sense if you have
-;; already undone some changes, so that there are some changes to redo!
-;; Redoing-in-region splits off a new branch of the undo history below your
-;; current location in the undo tree. This time, the new branch consists of a
-;; redo step that redoes some of the redo changes that affect the current
-;; region, followed by all the remaining redo changes.
+;; What about redo-in-region? Obviously, redo-in-region only makes sense if
+;; you have already undone some changes, so that there are some changes to
+;; redo! Redoing-in-region splits off a new branch of the undo history below
+;; your current location in the undo tree. This time, the new branch consists
+;; of a first redo step that redoes some of the redo changes that affect the
+;; current region, followed by *all* the remaining redo changes.
 ;;
 ;;      Previous undo history                Redo-in-region
 ;;
 ;;               o                                o
 ;;               |                                |
 ;;               |                                |
-;;               x                                o
-;;               |                                |\
+;;               |                                |
+;;               x                                o_
 ;;               |                                | \
-;;               o                                o  x  (redo-in-region)
+;;               |                                |  x  (redo-in-region)
+;;               |                                |  |
+;;               o                                o  |
+;;               |                                |  |
 ;;               |                                |  |
 ;;               |                                |  |
 ;;               o                                o  o
@@ -708,19 +730,19 @@
 ;;
 ;;      First redo-in-region                 Second redo-in-region
 ;;
-;;          o                                     o
-;;          |                                     |
-;;          |                                     |
-;;          o                                     o
-;;          |\                                    |\
-;;          | \                                   | \
-;;          o  x  (redo-in-region)                o  o
-;;          |  |                                  |  |
-;;          |  |                                  |  |
-;;          o  o                                  o  x  (redo-in-region)
-;;                                                   |
-;;                                                   |
-;;                                                   o
+;;               o                                 o
+;;               |                                 |
+;;               |                                 |
+;;               |                                 |
+;;               o_                                o_
+;;               | \                               | \
+;;               |  x                              |  o
+;;               |  |                              |  |
+;;               o  |                              o  |
+;;               |  |                              |  |
+;;               |  |                              |  x  (redo-in-region)
+;;               |  |                              |  |
+;;               o  o                              o  o
 ;;
 ;; Note that undo-in-region and redo-in-region only ever add new changes to
 ;; the undo tree, they *never* modify existing undo history. So you can always
