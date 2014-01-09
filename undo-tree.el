@@ -1239,6 +1239,7 @@ in visualizer."
 			     :enable (and undo-tree-mode
 					  (not buffer-read-only)
 					  (not (eq t buffer-undo-list))
+					  (not (eq nil buffer-undo-tree))
 					  (undo-tree-node-previous
 					   (undo-tree-current buffer-undo-tree)))
 			     :help "Undo last operation"))
@@ -1247,6 +1248,7 @@ in visualizer."
 			     :enable (and undo-tree-mode
 					  (not buffer-read-only)
 					  (not (eq t buffer-undo-list))
+					  (not (eq nil buffer-undo-tree))
 					  (undo-tree-node-next
 					   (undo-tree-current buffer-undo-tree)))
 			     :help "Redo last operation")
