@@ -411,7 +411,7 @@
 ;;                       o  o     o     o     o     o
 ;;                       |  |\    |\    |\    |\    |
 ;;                       |  | \   | \   | \   | \   |
-;;                       o  o  |  |  o  o  o  |  o  o
+;;                       o  o  |  |  o  o  |  |  o  o
 ;;                       | /   |  |  | /   |  |  | /
 ;;                       |/    |  |  |/    |  |  |/
 ;;      (already undid   o     |  |  o<.   |  |  o
@@ -587,7 +587,7 @@
 ;; Finally, hitting "q" will quit the visualizer, leaving the parent buffer in
 ;; whatever state you ended at. Hitting "C-q" will abort the visualizer,
 ;; returning the parent buffer to whatever state it was originally in when the
-;; visualizer was .
+;; visualizer was invoked.
 ;;
 ;;
 ;;
