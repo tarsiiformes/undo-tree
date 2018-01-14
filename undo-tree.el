@@ -2240,7 +2240,7 @@ which is defined in the `warnings' library.\n")
 	      (setcdr undo-list (cddr undo-list)))
 
 	     ;; if element crosses region, we can't pull any more elements
-	     ((undo-elt-crosses-region elt start end)
+	     ((with-no-warnings (undo-elt-crosses-region elt start end))
 	      ;; if we've found a visible element, it must be earlier in
 	      ;; current node's changeset; stop pulling elements (null
 	      ;; `undo-list' and non-nil `got-visible-elt' cause loop to exit)
@@ -2449,7 +2449,7 @@ which is defined in the `warnings' library.\n")
 	      (setcdr redo-list (cddr redo-list)))
 
 	     ;; if element crosses region, we can't pull any more elements
-	     ((undo-elt-crosses-region elt start end)
+	     ((with-no-warnings (undo-elt-crosses-region elt start end))
 	      ;; if we've found a visible element, it must be earlier in
 	      ;; current node's changeset; stop pulling elements (null
 	      ;; `redo-list' and non-nil `got-visible-elt' cause loop to exit)
