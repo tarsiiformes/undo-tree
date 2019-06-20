@@ -3807,7 +3807,7 @@ signaling an error if file is not found."
   (if relative
       ;; relative time
       (let ((time (floor (float-time
-			  (subtract-time (current-time) timestamp))))
+			  (time-subtract (current-time) timestamp))))
 	    n)
 	(setq time
 	      ;; years
