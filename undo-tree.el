@@ -1707,6 +1707,12 @@ Comparison is done with `eq'."
   undo-list)
 
 
+(defun undo-list-found-canary-p (undo-list)
+  (or (eq (car undo-list) 'undo-tree-canary)
+      (and (null (car undo-list))
+	   (eq (cadr undo-list) 'undo-tree-canary))))
+
+
 (defun undo-list-pop-changeset (&optional discard-pos)
   ;; Pop changeset from `buffer-undo-list'. If DISCARD-POS is non-nil, discard
   ;; any position entries from changeset.
@@ -1726,8 +1732,7 @@ Comparison is done with `eq'."
 	       (undo-tree-move-GC-elts-to-pool (car p))
 	       (while (and discard-pos (integerp (car buffer-undo-list)))
 		 (setq buffer-undo-list (cdr buffer-undo-list)))
-	       (and (car buffer-undo-list)
-		    (not (eq (car buffer-undo-list) 'undo-tree-canary))))
+	       (not (undo-list-found-canary-p buffer-undo-list)))
         (setcdr p (list (pop buffer-undo-list)))
 	(setq p (cdr p)))
       changeset)))
@@ -1769,8 +1774,7 @@ Comparison is done with `eq'."
   (when (null buffer-undo-list)
     (setq buffer-undo-list '(nil undo-tree-canary)))
 
-  (unless (or (eq (cadr buffer-undo-list) 'undo-tree-canary)
-	      (eq (car buffer-undo-list) 'undo-tree-canary))
+  (unless (undo-list-found-canary-p buffer-undo-list)
     ;; create new node from first changeset in `buffer-undo-list', save old
     ;; `buffer-undo-tree' current node, and make new node the current node
     (let* ((node (undo-tree-make-node nil (undo-list-pop-changeset)))
@@ -1780,7 +1784,7 @@ Comparison is done with `eq'."
       (setf (undo-tree-current buffer-undo-tree) node)
       ;; grow tree fragment backwards using `buffer-undo-list' changesets
       (while (and buffer-undo-list
-		  (not (eq (cadr buffer-undo-list) 'undo-tree-canary)))
+		  (not (undo-list-found-canary-p buffer-undo-list)))
 	(setq node
 	      (undo-tree-grow-backwards node (undo-list-pop-changeset)))
 	(incf size (undo-list-byte-size (undo-tree-node-undo node)))
@@ -1788,8 +1792,7 @@ Comparison is done with `eq'."
       ;; if no undo history has been discarded from `buffer-undo-list' since
       ;; last transfer, splice new tree fragment onto end of old
       ;; `buffer-undo-tree' current node
-      (if (or (eq (cadr buffer-undo-list) 'undo-tree-canary)
-	      (eq (car buffer-undo-list) 'undo-tree-canary))
+      (if (undo-list-found-canary-p buffer-undo-list)
 	  (progn
 	    (setf (undo-tree-node-previous node) splice)
 	    (push node (undo-tree-node-next splice))
@@ -1798,9 +1801,9 @@ Comparison is done with `eq'."
 	    (incf (undo-tree-count buffer-undo-tree) count))
 	;; if undo history has been discarded, replace entire
 	;; `buffer-undo-tree' with new tree fragment
+	(message "Undo history discarded by Emacs - rebuilding undo-tree")
 	(setq node (undo-tree-grow-backwards node nil))
 	(setf (undo-tree-root buffer-undo-tree) node)
-	(setq buffer-undo-list '(nil undo-tree-canary))
 	(setf (undo-tree-size buffer-undo-tree) size)
 	(setf (undo-tree-count buffer-undo-tree) count)
 	(setq buffer-undo-list '(nil undo-tree-canary))))
