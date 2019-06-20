@@ -1813,12 +1813,11 @@ Comparison is done with `eq'."
 
 (defun undo-list-byte-size (undo-list)
   ;; Return size (in bytes) of UNDO-LIST
-  (let ((size 0) (p undo-list))
-    (while p
+  (let ((size 0))
+    (dolist (elt undo-list)
       (incf size 8)  ; cons cells use up 8 bytes
-      (when (and (consp (car p)) (stringp (caar p)))
-        (incf size (string-bytes (caar p))))
-      (setq p (cdr p)))
+      (when (stringp (car-safe elt))
+        (incf size (string-bytes (car elt)))))
     size))
 
 
