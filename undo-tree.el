@@ -3085,9 +3085,10 @@ without asking for confirmation."
     (user-error "No undo information in this buffer"))
   (undo-list-transfer-to-tree)
   (when (and buffer-undo-tree (not (eq buffer-undo-tree t)))
-    (condition-case nil
-	(undo-tree-kill-visualizer)
-      (error (undo-tree-clear-visualizer-data buffer-undo-tree)))
+    (undo-tree-kill-visualizer)
+    ;; should be cleared already by killing the visualize, but writes
+    ;; unreasable data if not for some reason, so just in case...
+    (undo-tree-clear-visualizer-data buffer-undo-tree)
     (let ((buff (current-buffer))
 	  tree)
       ;; get filename
