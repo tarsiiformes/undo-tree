@@ -1005,6 +1005,26 @@ enabled. However, this effect is quite rare in practice."
 		 (integer :tag "> size")))
 
 
+(defvar undo-tree-pre-save-element-functions '()
+  "Special hook to modify undo-tree elements prior to saving.
+Each function on this hook is called in turn on each undo element
+in the tree by `undo-tree-save-history' prior to writing the undo
+history to file. It should return either nil, which removes that
+undo element from the saved history, or a replacement element to
+use instead (which should be identical to the original element if
+that element should be saved unchanged).")
+
+
+(defvar undo-tree-post-load-element-functions '()
+  "Special hook to modify undo-tree undo elements after loading.
+Each function on this hook is called in turn on each undo element
+in the tree by `undo-tree-load-history' after loading the undo
+history from file. It should return either nil, which removes that
+undo element from the loaded history, or a replacement element to
+use instead (which should be identical to the original element if
+that element should be loaded unchanged).")
+
+
 (defface undo-tree-visualizer-default-face
   '((((class color)) :foreground "gray"))
   "Face used to draw undo-tree in visualizer."
@@ -1280,10 +1300,11 @@ in visualizer."
                   (size 0)
 		  (count 0)
 		  (object-pool (make-hash-table :test 'eq :weakness 'value))))
-   ;;(:copier nil)
-   )
+   (:copier nil))
   root current size count object-pool)
 
+(defun copy-undo-tree (tree)
+  (copy-tree tree 'copy-vectors))
 
 
 (defstruct
@@ -3100,29 +3121,41 @@ without asking for confirmation."
       (when (or (not (file-exists-p filename))
 		overwrite
 		(yes-or-no-p (format "Overwrite \"%s\"? " filename)))
-	(unwind-protect
-	    (progn
-	      ;; transform undo-tree into non-circular structure, and make
-	      ;; temporary copy
-	      (undo-tree-decircle buffer-undo-tree)
-	      (setq tree (copy-undo-tree buffer-undo-tree))
-	      ;; discard undo-tree object pool before saving
-	      (setf (undo-tree-object-pool tree) nil)
-	      ;; print undo-tree to file
-	      ;; NOTE: We use `with-temp-buffer' instead of `with-temp-file'
-	      ;;       to allow `auto-compression-mode' to take effect, in
-	      ;;       case user has overridden or advised the default
-	      ;;       `undo-tree-make-history-save-file-name' to add a
-	      ;;       compressed file extension.
-	      (with-auto-compression-mode
-		(with-temp-buffer
-		  (prin1 (sha1 buff) (current-buffer))
-		  (terpri (current-buffer))
-		  (let ((print-circle t)) (prin1 tree (current-buffer)))
-		  (write-region nil nil filename))))
-	  ;; restore circular undo-tree data structure
-	  (undo-tree-recircle buffer-undo-tree))
-	))))
+	;; transform undo-tree into non-circular structure, and make temporary
+	;; copy
+	(setq tree (copy-undo-tree buffer-undo-tree))
+	(undo-tree-decircle tree)
+	;; discard undo-tree object pool before saving
+	(setf (undo-tree-object-pool tree) nil)
+	;; run pre-save transformer functions
+	(when undo-tree-pre-save-element-functions
+	  (undo-tree-mapc
+	   (lambda (node)
+	     (let ((changeset (undo-tree-node-undo node)))
+	       (run-hook-wrapped
+		'undo-tree-pre-save-element-functions
+		(lambda (fun)
+		  (setq changeset (delq nil (mapcar fun changeset)))))
+		(setf (undo-tree-node-undo node) changeset))
+	     (let ((changeset (undo-tree-node-redo node)))
+	       (run-hook-wrapped
+		'undo-tree-pre-save-element-functions
+		(lambda (fun)
+		  (setq changeset (delq nil (mapcar fun changeset)))))
+	       (setf (undo-tree-node-redo node) changeset)))
+	   (undo-tree-root tree)))
+	;; print undo-tree to file
+	;; NOTE: We use `with-temp-buffer' instead of `with-temp-file' to
+	;;       allow `auto-compression-mode' to take effect, in case user
+	;;       has overridden or advised the default
+	;;       `undo-tree-make-history-save-file-name' to add a compressed
+	;;       file extension.
+	(with-auto-compression-mode
+	  (with-temp-buffer
+	    (prin1 (sha1 buff) (current-buffer))
+	    (terpri (current-buffer))
+	    (let ((print-circle t)) (prin1 tree (current-buffer)))
+	    (write-region nil nil filename)))))))
 
 
 
@@ -3178,7 +3211,23 @@ signaling an error if file is not found."
 		      "Error reading undo-tree history from \"%s\"" filename)
 	     (throw 'load-error nil)))
 	  (kill-buffer nil)))
-      ;; initialise empty undo-tree object pool
+	;; run post-load transformer functions
+	(when undo-tree-post-load-element-functions
+	  (undo-tree-mapc
+	   (lambda (node)
+	     (let ((changeset (undo-tree-node-undo node)))
+	       (run-hook-wrapped
+		'undo-tree-post-load-element-functions
+		(lambda (fun)
+		  (setq changeset (delq nil (mapcar fun changeset)))))
+		(setf (undo-tree-node-undo node) changeset))
+	     (let ((changeset (undo-tree-node-redo node)))
+	       (run-hook-wrapped
+		'undo-tree-post-load-element-functions
+		(lambda (fun)
+		  (setq changeset (delq nil (mapcar fun changeset)))))
+	       (setf (undo-tree-node-redo node) changeset)))
+	   (undo-tree-root tree)))      ;; initialise empty undo-tree object pool
       (setf (undo-tree-object-pool tree)
 	    (make-hash-table :test 'eq :weakness 'value))
       ;; restore circular undo-tree data structure
@@ -3188,16 +3237,26 @@ signaling an error if file is not found."
 
 
 ;; Versions of save/load functions for use in hooks
-(defun undo-tree-save-history-hook ()
+(defun undo-tree-save-history-from-hook ()
   (when (and undo-tree-mode undo-tree-auto-save-history
 	     (not (eq buffer-undo-list t)))
     (undo-tree-save-history nil t) nil))
 
-(defun undo-tree-load-history-hook ()
+(define-obsolete-function-alias
+  'undo-tree-save-history-hook 'undo-tree-save-history-from-hook
+  "`undo-tree-save-history-hook' is obsolete since undo-tree
+ version 0.6.6. Use `undo-tree-save-history-from-hook' instead.")
+
+(defun undo-tree-load-history-from-hook ()
   (when (and undo-tree-mode undo-tree-auto-save-history
 	     (not (eq buffer-undo-list t))
 	     (not revert-buffer-in-progress-p))
     (undo-tree-load-history nil t)))
+
+(define-obsolete-function-alias
+  'undo-tree-load-history-hook 'undo-tree-load-history-from-hook
+  "`undo-tree-load-history-hook' is obsolete since undo-tree
+ version 0.6.6. Use `undo-tree-load-history-from-hook' instead.")
 
 
 
