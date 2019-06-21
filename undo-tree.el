@@ -888,7 +888,7 @@ when `undo-tree-mode' is enabled."
   :type '(repeat symbol))
 
 
-(defcustom undo-tree-enable-undo-in-region t
+(defcustom undo-tree-enable-undo-in-region nil
   "When non-nil, enable undo-in-region.
 
 When undo-in-region is enabled, undoing or redoing when the
