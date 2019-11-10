@@ -2160,7 +2160,7 @@ which is defined in the `warnings' library.\n")
       ;; --- initialisation ---
       (cond
        ;; if this is a repeated undo in the same region, start pulling changes
-       ;; from NODE at which undo-in-region branch is attached, and detatch
+       ;; from NODE at which undo-in-region branch is attached, and detach
        ;; the branch, using it as initial FRAGMENT of branch being constructed
        (repeated-undo-in-region
 	(setq original-current node
@@ -2174,7 +2174,7 @@ which is defined in the `warnings' library.\n")
 	    (setq fragment node
 		  node (undo-tree-current buffer-undo-tree))))
 	(when (eq splice node) (setq splice nil))
-	;; detatch undo-in-region branch
+	;; detach undo-in-region branch
 	(setf (undo-tree-node-next node)
 	      (delq fragment (undo-tree-node-next node))
 	      (undo-tree-node-previous fragment) nil
