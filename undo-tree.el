@@ -1754,6 +1754,12 @@ Comparison is done with `eq'."
       copy)))
 
 
+(defvar undo-tree-gc-flag nil)
+
+(defun undo-tree-post-gc ()
+  (setq undo-tree-gc-flag t))
+
+
 (defun undo-list-transfer-to-tree ()
   ;; Transfer entries accumulated in `undo-list' to `buffer-undo-tree'.
 
@@ -1764,13 +1770,19 @@ Comparison is done with `eq'."
   ;; if `buffer-undo-tree' is empty, create initial undo-tree
   (when (null buffer-undo-tree) (setq buffer-undo-tree (make-undo-tree)))
 
-  ;; garbage-collect then deep-copy `buffer-undo-list', in an attempt to
-  ;; mitigate race conditions with garbage collector corrupting undo history
-  ;; -- is this even a thing?
-  (garbage-collect)
-  (let ((undo-list (copy-tree buffer-undo-list))
-	changeset)
+  ;; garbage-collect then repeatedly try to deep-copy `buffer-undo-list' until
+  ;; we succeed without GC running, in an attempt to mitigate race conditions
+  ;; with garbage collector corrupting undo history (is this even a thing?!)
+  (unless (or (null buffer-undo-list)
+	      (undo-list-found-canary-p buffer-undo-list))
+    (garbage-collect))
+  (let (undo-list changeset)
+    (setq undo-tree-gc-flag t)
+    (while undo-tree-gc-flag
+      (setq undo-tree-gc-flag nil
+	    undo-list (copy-tree buffer-undo-list)))
     (setq buffer-undo-list '(nil undo-tree-canary))
+
     (when (setq changeset (undo-list-pop-changeset undo-list))
       ;; create new node from first changeset in `undo-list', save old
       ;; `buffer-undo-tree' current node, and make new node the current node
@@ -2673,9 +2685,11 @@ Within the undo-tree visualizer, the following keys are available:
 
   ;; if disabling `undo-tree-mode', rebuild `buffer-undo-list' from tree so
   ;; Emacs undo can work
-  (when (not undo-tree-mode)
+  (if undo-tree-mode
+      (add-hook 'post-gc-hook #'undo-tree-post-gc nil )
     (undo-list-rebuild-from-tree)
-    (setq buffer-undo-tree nil)))
+    (setq buffer-undo-tree nil)
+    (remove-hook 'post-gc-hook #'undo-tree-post-gc 'local)))
 
 
 (defun turn-on-undo-tree-mode (&optional print-message)
