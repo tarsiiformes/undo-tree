@@ -1108,8 +1108,9 @@ in visualizer."
 (defconst undo-tree-diff-buffer-name "*undo-tree Diff*")
 
 ;; install history-auto-save hooks
-(add-hook 'write-file-functions 'undo-tree-save-history-hook)
-(add-hook 'find-file-hook 'undo-tree-load-history-hook)
+(add-hook 'write-file-functions 'undo-tree-save-history-from-hook)
+(add-hook 'kill-buffer-hook 'undo-tree-save-history-from-hook)
+(add-hook 'find-file-hook 'undo-tree-load-history-from-hook)
 
 
 
@@ -3122,7 +3123,7 @@ without asking for confirmation."
   (undo-list-transfer-to-tree)
   (when (and buffer-undo-tree (not (eq buffer-undo-tree t)))
     (undo-tree-kill-visualizer)
-    ;; should be cleared already by killing the visualize, but writes
+    ;; should be cleared already by killing the visualizer, but writes
     ;; unreasable data if not for some reason, so just in case...
     (undo-tree-clear-visualizer-data buffer-undo-tree)
     (let ((buff (current-buffer))
@@ -3136,8 +3137,7 @@ without asking for confirmation."
       (when (or (not (file-exists-p filename))
 		overwrite
 		(yes-or-no-p (format "Overwrite \"%s\"? " filename)))
-	;; transform undo-tree into non-circular structure, and make temporary
-	;; copy
+	;; transform undo-tree into non-circular structure, and make tmp copy
 	(setq tree (copy-undo-tree buffer-undo-tree))
 	(undo-tree-decircle tree)
 	;; discard undo-tree object pool before saving
@@ -3175,14 +3175,16 @@ without asking for confirmation."
 
 
 (defun undo-tree-load-history (&optional filename noerror)
-  "Load undo-tree history from file.
+  "Load undo-tree history from file, for the current buffer.
 
 If optional argument FILENAME is null, default load file is
 \".<buffer-file-name>.~undo-tree\" if buffer is visiting a file.
 Otherwise, prompt for one.
 
 If optional argument NOERROR is non-nil, return nil instead of
-signaling an error if file is not found."
+signaling an error if file is not found.
+
+Note this will overwrite any existing undo history."
   (interactive)
   (unless undo-tree-mode
     (user-error "Undo-tree mode not enabled in buffer"))
@@ -3210,7 +3212,7 @@ signaling an error if file is not found."
 	      (setq hash (read (current-buffer)))
 	    (error
 	     (kill-buffer nil)
-	     (funcall (if noerror 'message 'user-error)
+	     (funcall (if noerror #'message #'user-error)
 		      "Error reading undo-tree history from \"%s\"" filename)
 	     (throw 'load-error nil)))
 	  (unless (string= (sha1 buff) hash)
@@ -3222,7 +3224,7 @@ signaling an error if file is not found."
 	      (setq tree (read (current-buffer)))
 	    (error
 	     (kill-buffer nil)
-	     (funcall (if noerror 'message 'error)
+	     (funcall (if noerror #'message #'error)
 		      "Error reading undo-tree history from \"%s\"" filename)
 	     (throw 'load-error nil)))
 	  (kill-buffer nil)))
@@ -3247,26 +3249,32 @@ signaling an error if file is not found."
 	    (make-hash-table :test 'eq :weakness 'value))
       ;; restore circular undo-tree data structure
       (undo-tree-recircle tree)
-      (setq buffer-undo-tree tree))))
+      ;; create undo-tree object pool
+      (setf (undo-tree-object-pool tree)
+	    (make-hash-table :test 'eq :weakness 'value))
+      (setq buffer-undo-tree tree
+	    buffer-undo-list '(nil undo-tree-canary)))))
 
 
 
 ;; Versions of save/load functions for use in hooks
 (defun undo-tree-save-history-from-hook ()
   (when (and undo-tree-mode undo-tree-auto-save-history
-	     (not (eq buffer-undo-list t)))
-    (undo-tree-save-history nil t) nil))
+	     (not (eq buffer-undo-list t))
+	     buffer-file-name)
+    (undo-tree-save-history nil 'overwrite) nil))
 
 (define-obsolete-function-alias
   'undo-tree-save-history-hook 'undo-tree-save-history-from-hook
   "`undo-tree-save-history-hook' is obsolete since undo-tree
  version 0.6.6. Use `undo-tree-save-history-from-hook' instead.")
 
+
 (defun undo-tree-load-history-from-hook ()
   (when (and undo-tree-mode undo-tree-auto-save-history
 	     (not (eq buffer-undo-list t))
 	     (not revert-buffer-in-progress-p))
-    (undo-tree-load-history nil t)))
+    (undo-tree-load-history nil 'noerror)))
 
 (define-obsolete-function-alias
   'undo-tree-load-history-hook 'undo-tree-load-history-from-hook
