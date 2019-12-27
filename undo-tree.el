@@ -874,13 +874,25 @@
   "Tree undo/redo."
   :group 'undo)
 
+
 (defcustom undo-tree-limit 80000000
   "Value of `undo-limit' used in `undo-tree-mode'.
 
 If `undo-limit' is larger than `undo-tree-limit', the larger of
-the two values will be used."
+the two values will be used.
+
+Setting this to nil prevents `undo-tree-mode' ever discarding
+undo history. (As far as possible. In principle, it is still
+possible for Emacs to discard undo history behind
+`undo-tree-mode's back.)
+
+USE THIS SETTING AT YOUR OWN RISK! Emacs may crash if undo
+history exceeds Emacs' available memory. This is particularly
+risky if `undo-tree-auto-save-history' is enabled, as in that
+case undo history is preserved even between Emacs sessions."
   :group 'undo-tree
-  :type 'integer)
+  :type '(choice integer (const nil)))
+
 
 (defcustom undo-tree-strong-limit 120000000
   "Value of `undo-strong-limit' used in `undo-tree-mode'.
@@ -889,6 +901,7 @@ If `undo-strong-limit' is larger than `undo-tree-strong-limit'
 the larger of the two values will be used."
   :group 'undo-tree
   :type 'integer)
+
 
 (defcustom undo-tree-outer-limit 360000000
   "Value of `undo-outer-limit' used in `undo-tree-mode'.
@@ -2690,6 +2703,8 @@ of either NODE itself or some node above it in the tree."
 ;;; =====================================================================
 ;;;                        Undo-tree commands
 
+(defvar undo-tree-timer nil)
+
 ;;;###autoload
 (define-minor-mode undo-tree-mode
   "Toggle undo-tree mode.
@@ -2713,21 +2728,31 @@ Within the undo-tree visualizer, the following keys are available:
   undo-tree-mode-lighter    ; lighter
   undo-tree-map             ; keymap
 
-  ;; if disabling `undo-tree-mode', rebuild `buffer-undo-list' from tree so
-  ;; Emacs undo can work
   (cond
-   (undo-tree-mode
+   (undo-tree-mode  ; enabling `undo-tree-mode'
     (set (make-local-variable 'undo-limit)
-	 (max undo-limit undo-tree-limit))
+	 (if undo-tree-limit
+	     (max undo-limit undo-tree-limit)
+	   most-positive-fixnum))
     (set (make-local-variable 'undo-strong-limit)
-	 (max undo-strong-limit undo-tree-strong-limit))
+	 (if undo-tree-limit
+	     (max undo-strong-limit undo-tree-strong-limit)
+	   most-positive-fixnum))
     (set (make-local-variable 'undo-outer-limit)
-	 (max undo-outer-limit undo-tree-outer-limit))
+	 (if undo-tree-limit
+	     (max undo-outer-limit undo-tree-outer-limit)
+	   most-positive-fixnum))
+    (when (null undo-tree-limit)
+      (setq undo-tree-timer
+	    (run-with-idle-timer 5 'repeat #'undo-list-transfer-to-tree)))
     (add-hook 'post-gc-hook #'undo-tree-post-gc nil))
-   (t
+
+   (t  ; disabling `undo-tree-mode'
+    ;; rebuild `buffer-undo-list' from tree so Emacs undo can work
     (undo-list-rebuild-from-tree)
     (setq buffer-undo-tree nil)
     (remove-hook 'post-gc-hook #'undo-tree-post-gc 'local)
+    (when (timerp undo-tree-timer) (cancel-timer undo-tree-timer))
     (kill-local-variable 'undo-limit)
     (kill-local-variable 'undo-strong-limit)
     (kill-local-variable 'undo-outer-limit))))
