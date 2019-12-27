@@ -4,7 +4,7 @@
 
 ;; Author: Toby Cubitt <toby-undo-tree@dr-qubit.org>
 ;; Maintainer: Toby Cubitt <toby-undo-tree@dr-qubit.org>
-;; Version: 0.6.7
+;; Version: 0.7
 ;; Keywords: convenience, files, undo, redo, history, tree
 ;; URL: http://www.dr-qubit.org/emacs.php
 ;; Repository: http://www.dr-qubit.org/git/undo-tree.git
@@ -873,6 +873,31 @@
 (defgroup undo-tree nil
   "Tree undo/redo."
   :group 'undo)
+
+(defcustom undo-tree-limit 80000000
+  "Value of `undo-limit' used in `undo-tree-mode'.
+
+If `undo-limit' is larger than `undo-tree-limit', the larger of
+the two values will be used."
+  :group 'undo-tree
+  :type 'integer)
+
+(defcustom undo-tree-strong-limit 120000000
+  "Value of `undo-strong-limit' used in `undo-tree-mode'.
+
+If `undo-strong-limit' is larger than `undo-tree-strong-limit'
+the larger of the two values will be used."
+  :group 'undo-tree
+  :type 'integer)
+
+(defcustom undo-tree-outer-limit 360000000
+  "Value of `undo-outer-limit' used in `undo-tree-mode'.
+
+If `undo-outer-limit' is larger than `undo-tree-outer-limit' the
+larger of the two values will be used."
+  :group 'undo-tree
+  :type 'integer)
+
 
 (defcustom undo-tree-mode-lighter " Undo-Tree"
   "Lighter displayed in mode line
@@ -1818,7 +1843,7 @@ Comparison is done with `eq'."
 	  (setf (undo-tree-size buffer-undo-tree) size)
 	  (setf (undo-tree-count buffer-undo-tree) count)
 	  (setq undo-list '(nil undo-tree-canary))))))
-  
+
   ;; discard undo history if necessary
   (undo-tree-discard-history))
 
@@ -2690,11 +2715,22 @@ Within the undo-tree visualizer, the following keys are available:
 
   ;; if disabling `undo-tree-mode', rebuild `buffer-undo-list' from tree so
   ;; Emacs undo can work
-  (if undo-tree-mode
-      (add-hook 'post-gc-hook #'undo-tree-post-gc nil )
+  (cond
+   (undo-tree-mode
+    (set (make-local-variable 'undo-limit)
+	 (max undo-limit undo-tree-limit))
+    (set (make-local-variable 'undo-strong-limit)
+	 (max undo-strong-limit undo-tree-strong-limit))
+    (set (make-local-variable 'undo-outer-limit)
+	 (max undo-outer-limit undo-tree-outer-limit))
+    (add-hook 'post-gc-hook #'undo-tree-post-gc nil))
+   (t
     (undo-list-rebuild-from-tree)
     (setq buffer-undo-tree nil)
-    (remove-hook 'post-gc-hook #'undo-tree-post-gc 'local)))
+    (remove-hook 'post-gc-hook #'undo-tree-post-gc 'local)
+    (kill-local-variable 'undo-limit)
+    (kill-local-variable 'undo-strong-limit)
+    (kill-local-variable 'undo-outer-limit))))
 
 
 (defun turn-on-undo-tree-mode (&optional print-message)
