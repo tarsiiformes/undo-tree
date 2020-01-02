@@ -881,15 +881,16 @@
 If `undo-limit' is larger than `undo-tree-limit', the larger of
 the two values will be used.
 
+See also `undo-tree-strong-limit' and `undo-tree-outer-limit'.
+
 Setting this to nil prevents `undo-tree-mode' ever discarding
 undo history. (As far as possible. In principle, it is still
 possible for Emacs to discard undo history behind
-`undo-tree-mode's back.)
-
-USE THIS SETTING AT YOUR OWN RISK! Emacs may crash if undo
-history exceeds Emacs' available memory. This is particularly
-risky if `undo-tree-auto-save-history' is enabled, as in that
-case undo history is preserved even between Emacs sessions."
+`undo-tree-mode's back.) USE THIS SETTING AT YOUR OWN RISK! Emacs
+may crash if undo history exceeds Emacs' available memory. This
+is particularly risky if `undo-tree-auto-save-history' is
+enabled, as in that case undo history is preserved even between
+Emacs sessions."
   :group 'undo-tree
   :type '(choice integer (const nil)))
 
@@ -1850,7 +1851,7 @@ Comparison is done with `eq'."
 	  ;; if undo history has been discarded, replace entire
 	  ;; `buffer-undo-tree' with new tree fragment
 	  (unless (= (undo-tree-size buffer-undo-tree) 0)
-	    (message "Undo history discarded by Emacs - rebuilding undo-tree"))
+	    (message "Undo history discarded by Emacs (see `undo-limit') - rebuilding undo-tree"))
 	  (setq node (undo-tree-grow-backwards node nil))
 	  (setf (undo-tree-root buffer-undo-tree) node)
 	  (setf (undo-tree-size buffer-undo-tree) size)
@@ -2042,6 +2043,7 @@ set by `undo-limit', `undo-strong-limit' and `undo-outer-limit'."
 			  ))
                      undo-limit))
         (setq node (undo-tree-discard-node node)))
+      (message "Undo history discarded by undo-tree (see `undo-tree-limit')")
 
       ;; if we're still over the `undo-outer-limit', discard entire history
       (when (> (undo-tree-size buffer-undo-tree) undo-outer-limit)
@@ -4168,7 +4170,7 @@ at mouse event POS."
 (defun undo-tree-visualize-undo-to-x (&optional x)
   "Undo to last branch point, register, or saved state.
 If X is the symbol `branch', undo to last branch point. If X is
-the symbol `register', undo to last register. If X is the sumbol
+the symbol `register', undo to last register. If X is the symbol
 `saved', undo to last saved state. If X is null, undo to first of
 these that's encountered.
 
