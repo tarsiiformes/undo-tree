@@ -1,6 +1,6 @@
 ;;; undo-tree.el --- Treat undo history as a tree  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2009-2019  Free Software Foundation, Inc
+;; Copyright (C) 2009-2020  Free Software Foundation, Inc
 
 ;; Author: Toby Cubitt <toby-undo-tree@dr-qubit.org>
 ;; Maintainer: Toby Cubitt <toby-undo-tree@dr-qubit.org>
