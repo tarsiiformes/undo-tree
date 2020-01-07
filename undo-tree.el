@@ -1332,6 +1332,7 @@ in visualizer."
 (defstruct
   (undo-tree
    :named
+   (:type vector)  ; needed for `copy-undo-tree' implementation
    (:constructor nil)
    (:constructor make-undo-tree
                  (&aux
@@ -1344,7 +1345,12 @@ in visualizer."
   root current size count object-pool)
 
 (defun copy-undo-tree (tree)
-  (copy-tree tree 'copy-vectors))
+  (unwind-protect
+      (progn
+	(undo-tree-decircle tree)
+	(copy-tree tree 'copy-vectors))
+    (undo-tree-recircle tree)))
+
 
 
 (defstruct
