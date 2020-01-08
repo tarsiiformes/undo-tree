@@ -1332,7 +1332,6 @@ in visualizer."
 (defstruct
   (undo-tree
    :named
-   (:type vector)  ; needed for `copy-undo-tree' implementation
    (:constructor nil)
    (:constructor make-undo-tree
                  (&aux
@@ -1345,12 +1344,22 @@ in visualizer."
   root current size count object-pool)
 
 (defun copy-undo-tree (tree)
+  ;; Return a copy of undo-tree TREE.
   (unwind-protect
-      (progn
+      (let ((new (make-undo-tree)))
 	(undo-tree-decircle tree)
-	(copy-tree tree 'copy-vectors))
+	(setf (undo-tree-root new)
+	      (copy-undo-tree-node (undo-tree-root tree)
+				   new (undo-tree-current tree)))
+	(setf (undo-tree-size new)
+	      (undo-tree-size tree))
+	(setf (undo-tree-count new)
+	      (undo-tree-count tree))
+	(setf (undo-tree-object-pool new)
+	      (copy-hash-table (undo-tree-object-pool tree)))
+	(undo-tree-recircle new)
+	new)
     (undo-tree-recircle tree)))
-
 
 
 (defstruct
@@ -1378,6 +1387,25 @@ in visualizer."
   (let ((len (length (undo-tree-make-node nil nil))))
     `(and (vectorp ,n) (= (length ,n) ,len))))
 
+(defun copy-undo-tree-node (node &optional tree current)
+  ;; Return a copy of undo-tree NODE, sans previous link or meta-data.
+  ;; If TREE and CURRENT are supplied, set (undo-tree-current TREE) to the
+  ;; copy of CURRENT node, if found.
+  (let ((new (undo-tree-make-node
+	      nil (copy-tree (undo-tree-node-undo node) 'copy-vectors)
+	      (copy-tree (undo-tree-node-redo node) 'copy-vectors))))
+    (setf (undo-tree-node-timestamp new)
+	  (copy-sequence (undo-tree-node-timestamp node)))
+    (setf (undo-tree-node-branch new)
+	  (undo-tree-node-branch node))
+    ;; recursively copy next nodes
+    (setf (undo-tree-node-next new)
+	  (mapcar (lambda (n) (copy-undo-tree-node n tree current))
+		  (undo-tree-node-next node)))
+    ;; set (undo-tree-current TREE) to copy if we've found CURRENT
+    (when (and tree (eq node current))
+      (setf (undo-tree-current tree) new))
+    new))
 
 
 (defstruct
