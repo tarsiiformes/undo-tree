@@ -4,7 +4,7 @@
 
 ;; Author: Toby Cubitt <toby-undo-tree@dr-qubit.org>
 ;; Maintainer: Toby Cubitt <toby-undo-tree@dr-qubit.org>
-;; Version: 0.7.1
+;; Version: 0.7.2
 ;; Keywords: convenience, files, undo, redo, history, tree
 ;; URL: http://www.dr-qubit.org/emacs.php
 ;; Repository: http://www.dr-qubit.org/git/undo-tree.git
@@ -3385,7 +3385,9 @@ Note this will overwrite any existing undo history."
 (defun undo-tree-save-history-from-hook ()
   (when (and undo-tree-mode undo-tree-auto-save-history
 	     (not (eq buffer-undo-list t))
-	     buffer-file-name)
+	     buffer-file-name
+	     (file-writable-p
+	      (undo-tree-make-history-save-file-name buffer-file-name)))
     (undo-tree-save-history nil 'overwrite) nil))
 
 (define-obsolete-function-alias
