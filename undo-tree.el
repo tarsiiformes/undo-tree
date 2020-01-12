@@ -4,7 +4,7 @@
 
 ;; Author: Toby Cubitt <toby-undo-tree@dr-qubit.org>
 ;; Maintainer: Toby Cubitt <toby-undo-tree@dr-qubit.org>
-;; Version: 0.7.2
+;; Version: 0.7.3
 ;; Keywords: convenience, files, undo, redo, history, tree
 ;; URL: http://www.dr-qubit.org/emacs.php
 ;; Repository: http://www.dr-qubit.org/git/undo-tree.git
@@ -756,6 +756,7 @@
 
 (eval-when-compile (require 'cl))
 (require 'diff)
+(require 'gv)
 
 
 
@@ -1147,9 +1148,9 @@ in visualizer."
 (defconst undo-tree-diff-buffer-name "*undo-tree Diff*")
 
 ;; install history-auto-save hooks
-(add-hook 'write-file-functions 'undo-tree-save-history-from-hook)
-(add-hook 'kill-buffer-hook 'undo-tree-save-history-from-hook)
-(add-hook 'find-file-hook 'undo-tree-load-history-from-hook)
+(add-hook 'write-file-functions #'undo-tree-save-history-from-hook)
+(add-hook 'kill-buffer-hook #'undo-tree-save-history-from-hook)
+(add-hook 'find-file-hook #'undo-tree-load-history-from-hook)
 
 
 
@@ -1284,44 +1285,6 @@ in visualizer."
     (define-key map "d" 'undo-tree-visualizer-selection-toggle-diff)
     ;; set keymap
     (setq undo-tree-visualizer-selection-mode-map map)))
-
-
-(defvar undo-tree-old-undo-menu-item nil)
-
-(defun undo-tree-update-menu-bar ()
-  "Update `undo-tree-mode' Edit menu items."
-  (if undo-tree-mode
-      (progn
-	;; save old undo menu item, and install undo/redo menu items
-	(setq undo-tree-old-undo-menu-item
-	      (cdr (assq 'undo (lookup-key global-map [menu-bar edit]))))
-	(define-key (lookup-key global-map [menu-bar edit])
-	  [undo] '(menu-item "Undo" undo-tree-undo
-			     :enable (and undo-tree-mode
-					  (not buffer-read-only)
-					  (not (eq t buffer-undo-list))
-					  (not (eq nil buffer-undo-tree))
-					  (undo-tree-node-previous
-					   (undo-tree-current buffer-undo-tree)))
-			     :help "Undo last operation"))
-	(define-key-after (lookup-key global-map [menu-bar edit])
-	  [redo] '(menu-item "Redo" undo-tree-redo
-			     :enable (and undo-tree-mode
-					  (not buffer-read-only)
-					  (not (eq t buffer-undo-list))
-					  (not (eq nil buffer-undo-tree))
-					  (undo-tree-node-next
-					   (undo-tree-current buffer-undo-tree)))
-			     :help "Redo last operation")
-	  'undo))
-    ;; uninstall undo/redo menu items
-    (define-key (lookup-key global-map [menu-bar edit])
-      [undo] undo-tree-old-undo-menu-item)
-    (define-key (lookup-key global-map [menu-bar edit])
-      [redo] nil)))
-
-(add-hook 'menu-bar-update-hook 'undo-tree-update-menu-bar)
-
 
 
 
@@ -3214,6 +3177,48 @@ Argument is a character, naming the register."
 
 
 ;;; =====================================================================
+;;;                       Undo-tree menu bar
+
+(defvar undo-tree-old-undo-menu-item nil)
+
+(defun undo-tree-update-menu-bar ()
+  "Update `undo-tree-mode' Edit menu items."
+  (if undo-tree-mode
+      (progn
+	;; save old undo menu item, and install undo/redo menu items
+	(setq undo-tree-old-undo-menu-item
+	      (cdr (assq 'undo (lookup-key global-map [menu-bar edit]))))
+	(define-key (lookup-key global-map [menu-bar edit])
+	  [undo] '(menu-item "Undo" undo-tree-undo
+			     :enable (and undo-tree-mode
+					  (not buffer-read-only)
+					  (not (eq t buffer-undo-list))
+					  (not (eq nil buffer-undo-tree))
+					  (undo-tree-node-previous
+					   (undo-tree-current buffer-undo-tree)))
+			     :help "Undo last operation"))
+	(define-key-after (lookup-key global-map [menu-bar edit])
+	  [redo] '(menu-item "Redo" undo-tree-redo
+			     :enable (and undo-tree-mode
+					  (not buffer-read-only)
+					  (not (eq t buffer-undo-list))
+					  (not (eq nil buffer-undo-tree))
+					  (undo-tree-node-next
+					   (undo-tree-current buffer-undo-tree)))
+			     :help "Redo last operation")
+	  'undo))
+    ;; uninstall undo/redo menu items
+    (define-key (lookup-key global-map [menu-bar edit])
+      [undo] undo-tree-old-undo-menu-item)
+    (define-key (lookup-key global-map [menu-bar edit])
+      [redo] nil)))
+
+(add-hook 'menu-bar-update-hook 'undo-tree-update-menu-bar)
+
+
+
+
+;;; =====================================================================
 ;;;                    Persistent storage commands
 
 (defun undo-tree-make-history-save-file-name (file)
@@ -4057,7 +4062,7 @@ Note this will overwrite any existing undo history."
 
 
 ;;; =====================================================================
-;;;                        Visualizer commands
+;;;                        Visualizer modes
 
 (define-derived-mode
   undo-tree-visualizer-mode special-mode "undo-tree-visualizer"
@@ -4079,6 +4084,34 @@ Within the undo-tree visualizer, the following keys are available:
   (setq undo-tree-visualizer-selected-node nil))
 
 
+(define-minor-mode undo-tree-visualizer-selection-mode
+  "Toggle mode to select nodes in undo-tree visualizer."
+  :lighter "Select"
+  :keymap undo-tree-visualizer-selection-mode-map
+  :group undo-tree
+  (cond
+   ;; enable selection mode
+   (undo-tree-visualizer-selection-mode
+    (setq cursor-type 'box)
+    (setq undo-tree-visualizer-selected-node
+	  (undo-tree-current buffer-undo-tree))
+    ;; erase diff (if any), as initially selected node is identical to current
+    (when undo-tree-visualizer-diff
+      (let ((buff (get-buffer undo-tree-diff-buffer-name))
+	    (inhibit-read-only t))
+	(when buff (with-current-buffer buff (erase-buffer))))))
+   (t ;; disable selection mode
+    (setq cursor-type nil)
+    (setq undo-tree-visualizer-selected-node nil)
+    (goto-char (undo-tree-node-marker (undo-tree-current buffer-undo-tree)))
+    (when undo-tree-visualizer-diff (undo-tree-visualizer-update-diff)))
+   ))
+
+
+
+
+;;; =====================================================================
+;;;                        Visualizer commands
 
 (defun undo-tree-visualize-undo (&optional arg)
   "Undo changes. A numeric ARG serves as a repeat count."
@@ -4409,31 +4442,7 @@ specifies `saved', and a negative prefix argument specifies
 
 
 ;;; =====================================================================
-;;;                    Visualizer selection mode
-
-(define-minor-mode undo-tree-visualizer-selection-mode
-  "Toggle mode to select nodes in undo-tree visualizer."
-  :lighter "Select"
-  :keymap undo-tree-visualizer-selection-mode-map
-  :group undo-tree
-  (cond
-   ;; enable selection mode
-   (undo-tree-visualizer-selection-mode
-    (setq cursor-type 'box)
-    (setq undo-tree-visualizer-selected-node
-	  (undo-tree-current buffer-undo-tree))
-    ;; erase diff (if any), as initially selected node is identical to current
-    (when undo-tree-visualizer-diff
-      (let ((buff (get-buffer undo-tree-diff-buffer-name))
-	    (inhibit-read-only t))
-	(when buff (with-current-buffer buff (erase-buffer))))))
-   (t ;; disable selection mode
-    (setq cursor-type nil)
-    (setq undo-tree-visualizer-selected-node nil)
-    (goto-char (undo-tree-node-marker (undo-tree-current buffer-undo-tree)))
-    (when undo-tree-visualizer-diff (undo-tree-visualizer-update-diff)))
-   ))
-
+;;;                 Visualizer selection mode commands
 
 (defun undo-tree-visualizer-select-previous (&optional arg)
   "Move to previous node."
