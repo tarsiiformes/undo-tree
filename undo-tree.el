@@ -4,7 +4,7 @@
 
 ;; Author: Toby Cubitt <toby-undo-tree@dr-qubit.org>
 ;; Maintainer: Toby Cubitt <toby-undo-tree@dr-qubit.org>
-;; Version: 0.7.4
+;; Version: 0.7.5
 ;; Keywords: convenience, files, undo, redo, history, tree
 ;; URL: http://www.dr-qubit.org/emacs.php
 ;; Repository: http://www.dr-qubit.org/git/undo-tree.git
@@ -3294,7 +3294,10 @@ without asking for confirmation."
 	  (with-temp-buffer
 	    (prin1 (sha1 buff) (current-buffer))
 	    (terpri (current-buffer))
-	    (let ((print-circle t)) (prin1 tree (current-buffer)))
+            (let ((print-circle t)
+                  (print-length nil)
+                  (print-level nil))
+	      (prin1 tree (current-buffer)))
 	    (write-region nil nil filename)))))))
 
 
