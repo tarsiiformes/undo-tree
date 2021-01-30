@@ -3564,11 +3564,8 @@ Note this will overwrite any existing undo history."
     (setq undo-tree-visualizer-initial-node (undo-tree-current undo-tree))
     (setq undo-tree-visualizer-spacing
 	  (undo-tree-visualizer-calculate-spacing))
-    (make-local-variable 'undo-tree-visualizer-timestamps)
-    (make-local-variable 'undo-tree-visualizer-diff)
     (setq buffer-undo-tree undo-tree)
     (undo-tree-visualizer-mode)
-    ;; FIXME; don't know why `undo-tree-visualizer-mode' clears this
     (setq buffer-undo-tree undo-tree)
     (set (make-local-variable 'undo-tree-visualizer-lazy-drawing)
 	 (or (eq undo-tree-visualizer-lazy-drawing t)
@@ -4201,7 +4198,9 @@ Within the undo-tree visualizer, the following keys are available:
   :abbrev-table nil
   (setq truncate-lines t)
   (setq cursor-type nil)
-  (setq undo-tree-visualizer-selected-node nil))
+  (setq undo-tree-visualizer-selected-node nil)
+  (make-local-variable 'undo-tree-visualizer-timestamps)
+  (make-local-variable 'undo-tree-visualizer-diff))
 
 
 (define-minor-mode undo-tree-visualizer-selection-mode
