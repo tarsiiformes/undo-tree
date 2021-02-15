@@ -4,7 +4,7 @@
 
 ;; Author: Toby Cubitt <toby-undo-tree@dr-qubit.org>
 ;; Maintainer: Toby Cubitt <toby-undo-tree@dr-qubit.org>
-;; Version: 0.8
+;; Version: 0.8.1
 ;; Keywords: convenience, files, undo, redo, history, tree
 ;; Package-Requires: ((queue "0.2"))
 ;; URL: http://www.dr-qubit.org/emacs.php
@@ -1847,7 +1847,7 @@ Comparison is done with `eq'."
     (while undo-tree-gc-flag
       (setq undo-tree-gc-flag nil
 	    undo-list (copy-tree buffer-undo-list)))
-    (setq buffer-undo-list '(nil undo-tree-canary))
+    (setq buffer-undo-list (list nil 'undo-tree-canary))
 
     ;; create new node from first changeset in `undo-list', save old
     ;; `buffer-undo-tree' current node, and make new node the current node
@@ -1881,8 +1881,7 @@ Comparison is done with `eq'."
 	  (setq node (undo-tree-grow-backwards node nil))
 	  (setf (undo-tree-root buffer-undo-tree) node)
 	  (setf (undo-tree-size buffer-undo-tree) size)
-	  (setf (undo-tree-count buffer-undo-tree) count)
-	  (setq undo-list '(nil undo-tree-canary))))))
+	  (setf (undo-tree-count buffer-undo-tree) count)))))
 
   ;; discard undo history if necessary
   (undo-tree-discard-history))
@@ -3496,7 +3495,7 @@ Note this will overwrite any existing undo history."
 	  (kill-buffer nil))
 
 	(setq buffer-undo-tree tree
-	      buffer-undo-list '(nil undo-tree-canary)))))
+	      buffer-undo-list (list nil 'undo-tree-canary)))))
 
 
 
@@ -3849,9 +3848,9 @@ Note this will overwrite any existing undo history."
 	  undo-tree-insert-face
 	    (nconc
 	     (cond
-	      (current    '(undo-tree-visualizer-current-face))
-	      (unmodified '(undo-tree-visualizer-unmodified-face))
-	      (register   '(undo-tree-visualizer-register-face)))
+	      (current    (list 'undo-tree-visualizer-current-face))
+	      (unmodified (list 'undo-tree-visualizer-unmodified-face))
+	      (register   (list 'undo-tree-visualizer-register-face)))
 	     undo-tree-insert-face))
     ;; draw node and link it to its representation in visualizer
     (undo-tree-insert node-string)
