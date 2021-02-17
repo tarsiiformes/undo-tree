@@ -7,8 +7,8 @@
 ;; Version: 0.8.1
 ;; Keywords: convenience, files, undo, redo, history, tree
 ;; Package-Requires: ((queue "0.2"))
-;; URL: http://www.dr-qubit.org/emacs.php
-;; Repository: http://www.dr-qubit.org/git/undo-tree.git
+;; URL: https://www.dr-qubit.org/undo-tree.html
+;; Repository: https://gitlab.com/tsc25/undo-tree
 
 ;; This file is part of Emacs.
 ;;
