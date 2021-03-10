@@ -1,10 +1,10 @@
 ;;; undo-tree.el --- Treat undo history as a tree  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2009-2020  Free Software Foundation, Inc
+;; Copyright (C) 2009-2021  Free Software Foundation, Inc
 
 ;; Author: Toby Cubitt <toby-undo-tree@dr-qubit.org>
 ;; Maintainer: Toby Cubitt <toby-undo-tree@dr-qubit.org>
-;; Version: 0.8.1
+;; Version: 0.8.2
 ;; Keywords: convenience, files, undo, redo, history, tree
 ;; Package-Requires: ((queue "0.2"))
 ;; URL: https://www.dr-qubit.org/undo-tree.html
@@ -2226,16 +2226,14 @@ which is defined in the `warnings' library.\n")
   ;; Return non-nil if NODE corresponds to a buffer state that once upon a
   ;; time was unmodified. If a file modification time MTIME is specified,
   ;; return non-nil if the corresponding buffer state really is unmodified.
-  (let (changeset ntime)
-    (setq changeset
+  (let* ((changeset
 	  (or (undo-tree-node-redo node)
 	      (and (setq changeset (car (undo-tree-node-next node)))
-		   (undo-tree-node-undo changeset)))
-	  ntime
-	  (catch 'found
-	    (dolist (elt changeset)
-	      (when (and (consp elt) (eq (car elt) t) (consp (cdr elt))
-			 (throw 'found (cdr elt)))))))
+		   (undo-tree-node-undo changeset))))
+	 (ntime
+	  (let ((elt (car (last changeset))))
+	    (and (consp elt) (eq (car elt) t) (consp (cdr elt))
+		 (cdr elt)))))
     (and ntime
 	 (or (null mtime)
 	     ;; high-precision timestamps
