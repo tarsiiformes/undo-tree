@@ -3024,10 +3024,11 @@ Argument is a character, naming the register."
   (undo-list-transfer-to-tree)
   ;; save current node to REGISTER
   (set-register
-   register (registerv-make
-	     (undo-tree-make-register-data
-	      (current-buffer) (undo-tree-current buffer-undo-tree))
-	     :print-func 'undo-tree-register-data-print-func))
+   register (with-no-warnings
+	      (registerv-make
+	       (undo-tree-make-register-data
+		(current-buffer) (undo-tree-current buffer-undo-tree))
+	       :print-func 'undo-tree-register-data-print-func)))
   ;; record REGISTER in current node, for visualizer
   (setf (undo-tree-node-register (undo-tree-current buffer-undo-tree))
 	register))
