@@ -1,1 +1,3 @@
 *.elc
+undo-tree-autoloads.el
+undo-tree-pkg.el
