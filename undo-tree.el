@@ -3,7 +3,7 @@
 ;; Copyright (C) 2009-2022  Free Software Foundation, Inc
 
 ;; Author: Toby Cubitt <toby+undo-tree@dr-qubit.org>
-;; Maintainer: Toby Cubitt <toby-undo-tree@dr-qubit.org>
+;; Maintainer: Toby Cubitt <toby+undo-tree@dr-qubit.org>
 ;; Version: 0.8.2
 ;; Keywords: convenience, files, undo, redo, history, tree
 ;; Package-Requires: ((queue "0.2") (emacs "24.3"))
