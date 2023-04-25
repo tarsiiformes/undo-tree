@@ -2786,7 +2786,8 @@ changes within the current region."
       ;; elements from node's redo list
       (if preserve-redo
 	  (progn
-	    (undo-list-pop-changeset buffer-undo-list)
+            (with-no-warnings
+              (undo-list-pop-changeset buffer-undo-list))
 	    (cl-decf (undo-tree-size buffer-undo-tree)
 		     (undo-list-byte-size (undo-tree-node-redo current)))
 	    (setf (undo-tree-node-redo current)
@@ -2799,7 +2800,8 @@ changes within the current region."
 	(cl-decf (undo-tree-size buffer-undo-tree)
 		 (undo-list-byte-size (undo-tree-node-redo current)))
 	(setf (undo-tree-node-redo current)
-	      (undo-list-pop-changeset buffer-undo-list 'discard-pos))
+              (with-no-warnings
+                (undo-list-pop-changeset buffer-undo-list 'discard-pos)))
 	(cl-incf (undo-tree-size buffer-undo-tree)
 		 (undo-list-byte-size (undo-tree-node-redo current))))
 
@@ -2901,7 +2903,8 @@ changes within the current region."
       ;; elements from node's redo list
       (if preserve-undo
 	  (progn
-	    (undo-list-pop-changeset buffer-undo-list)
+            (with-no-warnings
+	      (undo-list-pop-changeset buffer-undo-list))
 	    (cl-decf (undo-tree-size buffer-undo-tree)
 		     (undo-list-byte-size (undo-tree-node-undo current)))
 	    (setf (undo-tree-node-undo current)
