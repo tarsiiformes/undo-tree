@@ -3884,10 +3884,10 @@ Note this will overwrite any existing undo history."
   (dotimes (_ arg) (insert str))
   (setq arg (* arg (length str)))
   (undo-tree-move-forward arg)
-  ;; make sure mark isn't active, otherwise `backward-delete-char' might
-  ;; delete region instead of single char if transient-mark-mode is enabled
+  ;; make sure mark isn't active, otherwise `delete-char' might delete
+  ;; region instead of single char if transient-mark-mode is enabled
   (setq mark-active nil)
-  (backward-delete-char arg)
+  (delete-char (- arg))
   (when undo-tree-insert-face
     (put-text-property (- (point) arg) (point) 'face undo-tree-insert-face)))
 
@@ -4205,10 +4205,9 @@ using `undo-tree-redo' or `undo-tree-visualizer-redo'."
       ;; kill visualizer buffer
       (kill-buffer nil)
       ;; switch back to parent buffer
-      (unwind-protect
-	  (if (setq window (get-buffer-window parent))
-	      (select-window window)
-	    (switch-to-buffer parent))))))
+      (if (setq window (get-buffer-window parent))
+	  (select-window window)
+	(switch-to-buffer parent)))))
 
 
 (defun undo-tree-visualizer-abort ()
