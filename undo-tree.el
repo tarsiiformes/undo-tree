@@ -932,6 +932,10 @@ enabled. However, this effect is quite rare in practice."
 		 (const :tag "always" t)
 		 (integer :tag "> size")))
 
+(defcustom undo-tree-window-side nil
+  "The undo-tree window pops up on this side."
+  :type '(choice (const :tag "Bottom" bottom)
+                 (const :tag "Top"    top)))
 
 (defvar undo-tree-pre-save-element-functions '()
   "Special hook to modify undo-tree elements prior to saving.
@@ -3423,8 +3427,14 @@ Note this will overwrite any existing undo history."
   (let ((undo-tree buffer-undo-tree)
         (buff (current-buffer))
 	(display-buffer-mark-dedicated 'soft))
-    (switch-to-buffer-other-window
-     (get-buffer-create undo-tree-visualizer-buffer-name))
+    (if undo-tree-window-side
+	(select-window
+	 (display-buffer-in-side-window
+	  (get-buffer-create undo-tree-visualizer-buffer-name)
+	  `((side . ,undo-tree-window-side)
+            (window-height . 10))))
+      (switch-to-buffer-other-window
+       (get-buffer-create undo-tree-visualizer-buffer-name)))
     (setq undo-tree-visualizer-parent-buffer buff)
     (setq undo-tree-visualizer-parent-mtime
 	  (and (buffer-file-name buff)
